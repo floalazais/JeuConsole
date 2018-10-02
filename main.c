@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <conio.h>
 #include <stdbool.h>
-
+#include "error.h"
 #include "globals.h"
 #include "ascii_rectangle.h"
 
@@ -19,18 +19,67 @@ static void update_delta_time()
 	currentClock = newClock;
 }
 
+bool inputKeysBefore[INPUT_KEY_COUNT];
+bool inputKeysNow[INPUT_KEY_COUNT];
+
+static void is_input_key_supported(InputKey inputKey)
+{
+	if (inputKey < 0 || inputKey > INPUT_KEY_COUNT)
+	{
+		error("testing unsupported input key : %d.", inputKey);
+	}
+}
+
+bool is_input_key_up(InputKey inputKey)
+{
+	is_input_key_supported(inputKey);
+	return !inputKeysNow[inputKey];
+}
+
+bool is_input_key_down(InputKey inputKey)
+{
+	is_input_key_supported(inputKey);
+	return inputKeysNow[inputKey];
+}
+
+bool is_input_key_released(InputKey inputKey)
+{
+	is_input_key_supported(inputKey);
+	return inputKeysBefore[inputKey] && !inputKeysNow[inputKey];
+}
+
+bool is_input_key_pressed(InputKey inputKey)
+{
+	is_input_key_supported(inputKey);
+	return !inputKeysBefore[inputKey] && inputKeysNow[inputKey];
+}
+
+void update_input_keys()
+{
+	memcpy(inputKeysBefore, inputKeysNow, sizeof (inputKeysBefore));
+}
+
+bool compare_rectangle(SMALL_RECT *a, SMALL_RECT *b)
+{
+	return a->Top == b->Top && a->Left == b->Left && a->Right == b->Right && a->Bottom == b->Bottom;
+}
+
 CHAR_INFO buffer[SCREEN_HEIGHT][SCREEN_WIDTH];
 
 int main()
-{
-	QueryPerformanceFrequency(&globalPerformanceFrequency);
-	QueryPerformanceCounter(&currentClock);
-    
+{   
+	HWND consoleWindow = GetConsoleWindow();
+	SetWindowLong(consoleWindow, GWL_STYLE, GetWindowLong(consoleWindow, GWL_STYLE) & ~WS_MAXIMIZEBOX & ~WS_SIZEBOX);
+	
+
     COORD dwBufferSize = {SCREEN_WIDTH, SCREEN_HEIGHT};
     COORD dwBufferCoord = {0, 0};
     SMALL_RECT rcRegion = {0, 0, SCREEN_WIDTH - 1, SCREEN_HEIGHT - 1};
 	
 	HANDLE hOutput = GetStdHandle(STD_OUTPUT_HANDLE);
+	
+	CHAR_INFO oldBuffer[SCREEN_HEIGHT][SCREEN_WIDTH];
+	ReadConsoleOutput(hOutput, (CHAR_INFO *)oldBuffer, dwBufferSize, dwBufferCoord, &rcRegion);
 	
 	CONSOLE_CURSOR_INFO cursorInfo;
     GetConsoleCursorInfo(hOutput, &cursorInfo);
@@ -40,63 +89,69 @@ int main()
     HANDLE hInput = GetStdHandle(STD_INPUT_HANDLE);
     
     DWORD prevMode;
-    GetConsoleMode(hInput, &prevMode); 
-    SetConsoleMode(hInput, prevMode & ~ENABLE_QUICK_EDIT_MODE);
+    GetConsoleMode(hInput, &prevMode);
+    SetConsoleMode(hInput, prevMode & ~ENABLE_QUICK_EDIT_MODE & ~ENABLE_MOUSE_INPUT & ~ENABLE_PROCESSED_INPUT);
 	
 	AsciiRectangle *ar = create_ascii_rectangle();
 	ar->xPos = 8;
 	ar->yPos = 10;
 	ar->width = 5;
 	ar->height = 4;
-	ar->color = 0x0E;
-	ar->character = 'q';
+	ar->color = COLOR_WHITE;
+	
+	CONSOLE_SCREEN_BUFFER_INFO CSBInfo;
+	
+	QueryPerformanceFrequency(&globalPerformanceFrequency);
+	QueryPerformanceCounter(&currentClock);
+
+	bool pressed = true;
 	
 	while(running)
 	{
 		update_delta_time();
+		update_input_keys();
 		
-		while (_kbhit())
+		GetConsoleScreenBufferInfo(hOutput, &CSBInfo);
+		if (!compare_rectangle(&CSBInfo.srWindow, &rcRegion))
 		{
-			int code = _getch();
-			if (code == 27)
+			SetConsoleWindowInfo(hOutput, true, &rcRegion);
+		}
+		
+		if (GetAsyncKeyState(VK_ESCAPE))
+		{
+			running = false;
+		} else {
+			inputKeysNow[INPUT_KEY_Z] = GetAsyncKeyState('Z');
+			inputKeysNow[INPUT_KEY_S] = GetAsyncKeyState('S');
+			inputKeysNow[INPUT_KEY_Q] = GetAsyncKeyState('Q');
+			inputKeysNow[INPUT_KEY_D] = GetAsyncKeyState('D');
+			inputKeysNow[INPUT_KEY_R] = GetAsyncKeyState('R');
+			pressed = inputKeysNow[INPUT_KEY_Z] || inputKeysNow[INPUT_KEY_S] || inputKeysNow[INPUT_KEY_Q] || inputKeysNow[INPUT_KEY_D] || inputKeysNow[INPUT_KEY_R];
+		}
+		
+		if (is_input_key_pressed(INPUT_KEY_Z))
+		{
+			ar->xPos++;
+		}
+		
+		if (pressed)
+		{
+			pressed = false;
+			for (unsigned int i = 0; i < SCREEN_HEIGHT; i++)
 			{
-				running = false;
-			} else if (code == 'z') {
-                if (ar->yPos != 0)
-                {
-                    ar->yPos--;
-                }
-            } else if (code == 's') {
-                if (ar->yPos + ar->height != SCREEN_HEIGHT)
-                {
-                    ar->yPos++;
-                }
-            } else if (code == 'q') {
-                if (ar->xPos != 0)
-                {
-                    ar->xPos--;
-                }
-            } else if (code == 'd') {
-                if (ar->xPos + ar->width != SCREEN_WIDTH)
-                {
-                    ar->xPos++;
-                }
-            }
-        }
-        
-        for (unsigned int i = 0; i < SCREEN_HEIGHT; i++)
-        {
-            for (unsigned int j = 0; j < SCREEN_WIDTH; j++)
-            {
-                buffer[i][j].Char.AsciiChar = 0;
-                buffer[i][j].Attributes = 0;
-            }
-        }
-        
-        draw_ascii_rectangle(ar);
-        
-        WriteConsoleOutput(hOutput, (CHAR_INFO *)buffer, dwBufferSize, dwBufferCoord, &rcRegion);
+				for (unsigned int j = 0; j < SCREEN_WIDTH; j++)
+				{
+					buffer[i][j].Char.AsciiChar = 0;
+					buffer[i][j].Attributes = 0;
+				}
+			}
+			
+			draw_ascii_rectangle(ar);
+			
+			WriteConsoleOutput(hOutput, (CHAR_INFO *)buffer, dwBufferSize, dwBufferCoord, &rcRegion);
+		}
     }
+	WriteConsoleOutput(hOutput, (CHAR_INFO *)oldBuffer, dwBufferSize, dwBufferCoord, &rcRegion);
     
     cursorInfo.bVisible = true;
     SetConsoleCursorInfo(hOutput, &cursorInfo);

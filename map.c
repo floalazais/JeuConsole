@@ -33,15 +33,10 @@ char *file_to_string(char *filePath)
 	return fileString;
 }
 
-Map *create_map()
+Map *create_map(char *filePath)
 {
 	Map *map = malloc(sizeof (*map));
 	map->playerXPos = 0;
 	map->playerYPos = 0;
 	return map;
-}
-
-void fill_map_from_file(char *filePath)
-{
-	;
 }

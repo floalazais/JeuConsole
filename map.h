@@ -18,5 +18,4 @@ typedef struct Map
 	int playerYPos;
 } Map;
 
-Map *create_map();
-void fill_map_from_file(char *filePath);
+Map *create_map(char *filePath);
