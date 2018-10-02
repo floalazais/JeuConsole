@@ -128,9 +128,12 @@ int main()
 			pressed = inputKeysNow[INPUT_KEY_Z] || inputKeysNow[INPUT_KEY_S] || inputKeysNow[INPUT_KEY_Q] || inputKeysNow[INPUT_KEY_D] || inputKeysNow[INPUT_KEY_R];
 		}
 		
-		if (is_input_key_pressed(INPUT_KEY_Z))
+		if (is_input_key_down(INPUT_KEY_Z))
 		{
-			ar->xPos++;
+			if (ar->xPos != SCREEN_WIDTH - ar->width)
+			{
+				ar->xPos++;
+			}
 		}
 		
 		if (pressed || nbFrame == 0)
