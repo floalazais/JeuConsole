@@ -53,3 +53,8 @@ Map *create_map(char *filePath)
 	}
 	return map;
 }
+
+void draw_map(Map *map)
+{
+	;
+}

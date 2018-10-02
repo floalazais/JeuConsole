@@ -12,8 +12,8 @@ typedef struct Map
 {
 	int xPos;
 	int yPos;
-    TileType tiles[SCREEN_HEIGHT][SCREEN_WIDTH];
-	AsciiRectangle ars[SCREEN_HEIGHT][SCREEN_WIDTH];
+    TileType tiles[SCREEN_WIDTH][SCREEN_HEIGHT];
+	AsciiRectangle ars[SCREEN_WIDTH][SCREEN_HEIGHT];
 	int playerXPos;
 	int playerYPos;
 	int *boxesXPoss;
@@ -21,3 +21,4 @@ typedef struct Map
 } Map;
 
 Map *create_map(char *filePath);
+void draw_map(Map *map);
