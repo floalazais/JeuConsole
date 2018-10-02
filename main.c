@@ -5,8 +5,6 @@
 #include "globals.h"
 #include "ascii_rectangle.h"
 
-static bool running = true;
-
 static LARGE_INTEGER globalPerformanceFrequency;
 static LARGE_INTEGER currentClock;
 static LARGE_INTEGER newClock;
@@ -104,9 +102,10 @@ int main()
 	QueryPerformanceFrequency(&globalPerformanceFrequency);
 	QueryPerformanceCounter(&currentClock);
 
+	int nbFrame = 0;
 	bool pressed = true;
 	
-	while(running)
+	while(true)
 	{
 		update_delta_time();
 		update_input_keys();
@@ -119,7 +118,7 @@ int main()
 		
 		if (GetAsyncKeyState(VK_ESCAPE))
 		{
-			running = false;
+			break;
 		} else {
 			inputKeysNow[INPUT_KEY_Z] = GetAsyncKeyState('Z');
 			inputKeysNow[INPUT_KEY_S] = GetAsyncKeyState('S');
@@ -134,7 +133,7 @@ int main()
 			ar->xPos++;
 		}
 		
-		if (pressed)
+		if (pressed || nbFrame == 0)
 		{
 			pressed = false;
 			for (unsigned int i = 0; i < SCREEN_HEIGHT; i++)
@@ -150,6 +149,7 @@ int main()
 			
 			WriteConsoleOutput(hOutput, (CHAR_INFO *)buffer, dwBufferSize, dwBufferCoord, &rcRegion);
 		}
+		nbFrame++;
     }
 	WriteConsoleOutput(hOutput, (CHAR_INFO *)oldBuffer, dwBufferSize, dwBufferCoord, &rcRegion);
     

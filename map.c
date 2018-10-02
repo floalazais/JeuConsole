@@ -1,42 +1,55 @@
 #include "map.h"
 #include "error.h"
-#include "xalloc.h"
+#include "stretchy_buffer.h"
 #include <stdio.h>
 
-char *file_to_string(char *filePath)
+Map *create_map(char *filePath)
 {
+	Map *map = malloc(sizeof (*map));
+	map->playerXPos = -1;
+	map->playerYPos = -1;
 	FILE *file = fopen(filePath, "rb");
     if (!file)
     {
         error("could not open %s.", filePath);
     }
-
-    fseek(file, 0, SEEK_END);
-    long fileSize = ftell(file);
-    if (fileSize == -1L)
-    {
-        error("could not get size of %s.", filePath);
-    }
-    fileSize++;  // For '\0'
-    rewind(file);
-
-    char *fileString = xmalloc(sizeof (*fileString) * fileSize);
-    size_t result = fread(fileString, sizeof (char), fileSize - 1, file);
-    if (result != (unsigned long)fileSize - 1)
-    {
-        error("could not read %s.", filePath);
-    }
-    fileString[fileSize - 1] = '\0';
-
-	fclose(file);
-
-	return fileString;
-}
-
-Map *create_map(char *filePath)
-{
-	Map *map = malloc(sizeof (*map));
-	map->playerXPos = 0;
-	map->playerYPos = 0;
+	int lineLength = 0;
+	while (getc(file) != '\n')
+	{
+		lineLength++;
+	}
+	map->xPos = (120 - lineLength) / 2;
+	map->yPos = 0;
+	map->boxesXPoss = NULL;
+	map->boxesYPoss = NULL;
+	int cursorXPos = map->xPos;
+	int cursorYPos = 0;
+	rewind(file);
+	char c;
+	while ((c = getc(file)) != '\0')
+	{
+		if (c == ' ')
+		{
+			map->tiles[cursorXPos][cursorYPos] = TILE_VOID;
+		} else if (c == 'W') {
+			map->tiles[cursorXPos][cursorYPos] = TILE_WALL;
+		} else if (c == 'S') {
+			map->tiles[cursorXPos][cursorYPos] = TILE_SENSOR;
+		} else if (c == 'P') {
+			if (map->playerXPos != -1)
+			{
+				error("cannot have 2 players on the same map.");
+			}
+			map->playerXPos = cursorXPos;
+			map->playerYPos = cursorYPos;
+		} else if (c == 'B') {
+			buf_add(map->boxesXPoss, cursorXPos);
+			buf_add(map->boxesYPoss, cursorYPos);
+		} else if (c == '\n') {
+			cursorXPos = map->xPos - 1;
+			cursorYPos++;
+		}
+		cursorXPos++;
+	}
 	return map;
 }
