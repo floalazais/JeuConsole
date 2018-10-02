@@ -3,24 +3,24 @@
 
 AsciiRectangle *create_ascii_rectangle()
 {
-	AsciiRectangle *asciiRectangle = malloc(sizeof (*asciiRectangle));
-	asciiRectangle->cPos = 0;
-	asciiRectangle->lPos = 0;
-	asciiRectangle->width = 0;
-	asciiRectangle->height = 0;
-	asciiRectangle->character = 0;
-	asciiRectangle->color = 0;
-	return asciiRectangle;
+	AsciiRectangle *ar = malloc(sizeof (*ar));
+	ar->xPos = 0;
+	ar->yPos = 0;
+	ar->width = 0;
+	ar->height = 0;
+	ar->character = 0;
+	ar->color = 0;
+	return ar;
 }
 
-void draw_ascii_rectangle(AsciiRectangle *asciiRectangle)
+void draw_ascii_rectangle(AsciiRectangle *ar)
 {
-	for (int x = asciiRectangle->width; x > 0; x--)
+	for (int i = 0; i < ar->height; i++)
 	{
-		for (int y = asciiRectangle->height; y > 0; y--)
+		for (int j = 0; j < ar->width; j++)
 		{
-			buffer[asciiRectangle->lPos+x][asciiRectangle->cPos+y].Char.UnicodeChar = asciiRectangle->character;
-			buffer[asciiRectangle->lPos+x][asciiRectangle->cPos+y].Attributes = asciiRectangle->color;
-		}	
+			buffer[ar->yPos+i][ar->xPos+j].Char.UnicodeChar = ar->character;
+			buffer[ar->yPos+i][ar->xPos+j].Attributes = ar->color;
+		}
 	}
 }

@@ -1,7 +1,7 @@
 typedef struct AsciiRectangle
 {
-	int cPos;
-	int lPos;
+	int xPos;
+	int yPos;
 	int width;
 	int height;
 	int character;
@@ -9,4 +9,4 @@ typedef struct AsciiRectangle
 } AsciiRectangle;
 
 AsciiRectangle *create_ascii_rectangle();
-void draw_ascii_rectangle(AsciiRectangle *asciiRectangle);
+void draw_ascii_rectangle(AsciiRectangle *ar);

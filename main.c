@@ -19,35 +19,37 @@ static void update_delta_time()
 	currentClock = newClock;
 }
 
-static HANDLE hOutput;
-
-CHAR_INFO buffer[SCREEN_WIDTH][SCREEN_HEIGHT];
-COORD dwBufferSize = {SCREEN_WIDTH, SCREEN_HEIGHT};
-COORD dwBufferCoord = {0, 0};
-SMALL_RECT rcRegion = {0, 0, SCREEN_WIDTH - 1, SCREEN_HEIGHT - 1};
+CHAR_INFO buffer[SCREEN_HEIGHT][SCREEN_WIDTH];
 
 int main()
 {
 	QueryPerformanceFrequency(&globalPerformanceFrequency);
 	QueryPerformanceCounter(&currentClock);
+    
+    COORD dwBufferSize = {SCREEN_WIDTH, SCREEN_HEIGHT};
+    COORD dwBufferCoord = {0, 0};
+    SMALL_RECT rcRegion = {0, 0, SCREEN_WIDTH - 1, SCREEN_HEIGHT - 1};
 	
-	hOutput = GetStdHandle(STD_OUTPUT_HANDLE);
+	HANDLE hOutput = GetStdHandle(STD_OUTPUT_HANDLE);
 	
 	CONSOLE_CURSOR_INFO cursorInfo;
     GetConsoleCursorInfo(hOutput, &cursorInfo);
     cursorInfo.bVisible = false;
     SetConsoleCursorInfo(hOutput, &cursorInfo);
+    
+    HANDLE hInput = GetStdHandle(STD_INPUT_HANDLE);
+    
+    DWORD prevMode;
+    GetConsoleMode(hInput, &prevMode); 
+    SetConsoleMode(hInput, prevMode & ~ENABLE_QUICK_EDIT_MODE);
 	
 	AsciiRectangle *ar = create_ascii_rectangle();
-	ar->cPos = 8;
-	ar->lPos = 10;
+	ar->xPos = 8;
+	ar->yPos = 10;
 	ar->width = 5;
-	ar->height = 6;
+	ar->height = 4;
 	ar->color = 0x0E;
 	ar->character = 'q';
-	
-	
-	
 	
 	while(running)
 	{
@@ -59,32 +61,47 @@ int main()
 			if (code == 27)
 			{
 				running = false;
-			}
-		}
-
-		for (unsigned int i = 0; i < SCREEN_WIDTH; i++)
-		{
-			for (unsigned int j = 0; j < SCREEN_HEIGHT; j++)
-			{
-				buffer[i][j].Char.AsciiChar = 0;
-				buffer[i][j].Attributes = 0;
-			}
-		}
-		
-		buffer[5][10].Char.UnicodeChar = 'H';
-		buffer[5][10].Attributes = 0x0E;
-		buffer[3][10].Char.UnicodeChar = 'B';
-		buffer[3][10].Attributes = 0x0E;
-		buffer[4][10].Char.UnicodeChar = 'M';
-		buffer[4][10].Attributes = 0x0E;
-		
-		//draw_ascii_rectangle(ar);
-			
-		WriteConsoleOutput(hOutput, (CHAR_INFO *)buffer, dwBufferSize, dwBufferCoord, &rcRegion);
-	}
-	
-	cursorInfo.bVisible = true;
+			} else if (code == 'z') {
+                if (ar->yPos != 0)
+                {
+                    ar->yPos--;
+                }
+            } else if (code == 's') {
+                if (ar->yPos + ar->height != SCREEN_HEIGHT)
+                {
+                    ar->yPos++;
+                }
+            } else if (code == 'q') {
+                if (ar->xPos != 0)
+                {
+                    ar->xPos--;
+                }
+            } else if (code == 'd') {
+                if (ar->xPos + ar->width != SCREEN_WIDTH)
+                {
+                    ar->xPos++;
+                }
+            }
+        }
+        
+        for (unsigned int i = 0; i < SCREEN_HEIGHT; i++)
+        {
+            for (unsigned int j = 0; j < SCREEN_WIDTH; j++)
+            {
+                buffer[i][j].Char.AsciiChar = 0;
+                buffer[i][j].Attributes = 0;
+            }
+        }
+        
+        draw_ascii_rectangle(ar);
+        
+        WriteConsoleOutput(hOutput, (CHAR_INFO *)buffer, dwBufferSize, dwBufferCoord, &rcRegion);
+    }
+    
+    cursorInfo.bVisible = true;
     SetConsoleCursorInfo(hOutput, &cursorInfo);
-	
-	return 0;
+    
+    SetConsoleMode(hInput, prevMode);
+    
+    return 0;
 }
