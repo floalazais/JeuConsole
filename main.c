@@ -1,9 +1,7 @@
 #include <stdio.h>
 #include <conio.h>
-#include <stdbool.h>
 #include "error.h"
-#include "globals.h"
-#include "ascii_rectangle.h"
+#include "map.h"
 
 static LARGE_INTEGER globalPerformanceFrequency;
 static LARGE_INTEGER currentClock;
@@ -88,7 +86,7 @@ int main()
     
     DWORD prevMode;
     GetConsoleMode(hInput, &prevMode);
-    SetConsoleMode(hInput, prevMode & ~ENABLE_QUICK_EDIT_MODE & ~ENABLE_MOUSE_INPUT & ~ENABLE_PROCESSED_INPUT);
+    //SetConsoleMode(hInput, prevMode & ~ENABLE_QUICK_EDIT_MODE & ~ENABLE_MOUSE_INPUT & ~ENABLE_PROCESSED_INPUT);
 	
 	AsciiRectangle *ar = create_ascii_rectangle();
 	ar->xPos = 8;
@@ -99,11 +97,13 @@ int main()
 	
 	CONSOLE_SCREEN_BUFFER_INFO CSBInfo;
 	
-	QueryPerformanceFrequency(&globalPerformanceFrequency);
-	QueryPerformanceCounter(&currentClock);
-
 	int nbFrame = 0;
 	bool pressed = true;
+	
+	Map *map = create_map("map.map");
+	
+	QueryPerformanceFrequency(&globalPerformanceFrequency);
+	QueryPerformanceCounter(&currentClock);
 	
 	while(true)
 	{
@@ -128,14 +128,6 @@ int main()
 			pressed = inputKeysNow[INPUT_KEY_Z] || inputKeysNow[INPUT_KEY_S] || inputKeysNow[INPUT_KEY_Q] || inputKeysNow[INPUT_KEY_D] || inputKeysNow[INPUT_KEY_R];
 		}
 		
-		if (is_input_key_down(INPUT_KEY_Z))
-		{
-			if (ar->xPos != SCREEN_WIDTH - ar->width)
-			{
-				ar->xPos++;
-			}
-		}
-		
 		if (pressed || nbFrame == 0)
 		{
 			pressed = false;
@@ -148,7 +140,7 @@ int main()
 				}
 			}
 			
-			draw_ascii_rectangle(ar);
+			draw_map(map);
 			
 			WriteConsoleOutput(hOutput, (CHAR_INFO *)buffer, dwBufferSize, dwBufferCoord, &rcRegion);
 		}

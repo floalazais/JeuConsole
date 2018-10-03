@@ -10,14 +10,13 @@ typedef enum TileType
 
 typedef struct Map
 {
-	int xPos;
-	int yPos;
-    TileType tiles[SCREEN_WIDTH][SCREEN_HEIGHT];
-	AsciiRectangle ars[SCREEN_WIDTH][SCREEN_HEIGHT];
+	int width;
+	int height;
 	int playerXPos;
 	int playerYPos;
 	int *boxesXPoss;
 	int *boxesYPoss;
+    TileType *tiles;
 } Map;
 
 Map *create_map(char *filePath);
