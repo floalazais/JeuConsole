@@ -1,6 +1,3 @@
-#include "globals.h"
-#include "ascii_rectangle.h"
-
 typedef enum TileType
 {
 	TILE_VOID,
@@ -20,4 +17,6 @@ typedef struct Map
 } Map;
 
 Map *create_map(char *filePath);
+void update_map(Map *map);
 void draw_map(Map *map);
+void free_map(Map *map);

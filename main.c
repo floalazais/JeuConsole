@@ -2,6 +2,8 @@
 #include <conio.h>
 #include "error.h"
 #include "map.h"
+#include "globals.h"
+#include "ascii_rectangle.h"
 
 static LARGE_INTEGER globalPerformanceFrequency;
 static LARGE_INTEGER currentClock;
@@ -65,7 +67,8 @@ CHAR_INFO buffer[SCREEN_HEIGHT][SCREEN_WIDTH];
 int main()
 {   
 	HWND consoleWindow = GetConsoleWindow();
-	SetWindowLong(consoleWindow, GWL_STYLE, GetWindowLong(consoleWindow, GWL_STYLE) & ~WS_MAXIMIZEBOX & ~WS_SIZEBOX);
+	LONG oldWindowStyle = GetWindowLong(consoleWindow, GWL_STYLE);
+	SetWindowLong(consoleWindow, GWL_STYLE, oldWindowStyle & ~WS_MAXIMIZEBOX & ~WS_SIZEBOX);
 	
 
     COORD dwBufferSize = {SCREEN_WIDTH, SCREEN_HEIGHT};
@@ -86,7 +89,7 @@ int main()
     
     DWORD prevMode;
     GetConsoleMode(hInput, &prevMode);
-    //SetConsoleMode(hInput, prevMode & ~ENABLE_QUICK_EDIT_MODE & ~ENABLE_MOUSE_INPUT & ~ENABLE_PROCESSED_INPUT);
+    SetConsoleMode(hInput, prevMode & ~ENABLE_QUICK_EDIT_MODE & ~ENABLE_MOUSE_INPUT & ~ENABLE_PROCESSED_INPUT);
 	
 	AsciiRectangle *ar = create_ascii_rectangle();
 	ar->xPos = 8;
@@ -98,7 +101,7 @@ int main()
 	CONSOLE_SCREEN_BUFFER_INFO CSBInfo;
 	
 	int nbFrame = 0;
-	bool pressed = true;
+	bool pressed;
 	
 	Map *map = create_map("map.map");
 	
@@ -119,13 +122,19 @@ int main()
 		if (GetAsyncKeyState(VK_ESCAPE))
 		{
 			break;
-		} else {
-			inputKeysNow[INPUT_KEY_Z] = GetAsyncKeyState('Z');
-			inputKeysNow[INPUT_KEY_S] = GetAsyncKeyState('S');
-			inputKeysNow[INPUT_KEY_Q] = GetAsyncKeyState('Q');
-			inputKeysNow[INPUT_KEY_D] = GetAsyncKeyState('D');
-			inputKeysNow[INPUT_KEY_R] = GetAsyncKeyState('R');
-			pressed = inputKeysNow[INPUT_KEY_Z] || inputKeysNow[INPUT_KEY_S] || inputKeysNow[INPUT_KEY_Q] || inputKeysNow[INPUT_KEY_D] || inputKeysNow[INPUT_KEY_R];
+		}
+		
+		inputKeysNow[INPUT_KEY_Z] = GetAsyncKeyState('Z');
+		inputKeysNow[INPUT_KEY_S] = GetAsyncKeyState('S');
+		inputKeysNow[INPUT_KEY_Q] = GetAsyncKeyState('Q');
+		inputKeysNow[INPUT_KEY_D] = GetAsyncKeyState('D');
+		inputKeysNow[INPUT_KEY_R] = GetAsyncKeyState('R');
+		pressed = inputKeysNow[INPUT_KEY_Z] || inputKeysNow[INPUT_KEY_S] || inputKeysNow[INPUT_KEY_Q] || inputKeysNow[INPUT_KEY_D] || inputKeysNow[INPUT_KEY_R];
+		
+		if (is_input_key_pressed(INPUT_KEY_R))
+		{
+			free_map(map);
+			map = create_map("map.map");
 		}
 		
 		if (pressed || nbFrame == 0)
@@ -140,6 +149,7 @@ int main()
 				}
 			}
 			
+			update_map(map);
 			draw_map(map);
 			
 			WriteConsoleOutput(hOutput, (CHAR_INFO *)buffer, dwBufferSize, dwBufferCoord, &rcRegion);
@@ -152,6 +162,8 @@ int main()
     SetConsoleCursorInfo(hOutput, &cursorInfo);
     
     SetConsoleMode(hInput, prevMode);
+	
+	SetWindowLong(consoleWindow, GWL_STYLE, oldWindowStyle);
     
     return 0;
 }
