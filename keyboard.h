@@ -1,6 +1,3 @@
-#include <Windows.h>
-#include <stdbool.h>
-
 typedef enum InputKey
 {
 	INPUT_KEY_ESCAPE,
@@ -23,9 +20,3 @@ bool is_input_key_released(InputKey inputKey);
 
 extern bool inputKeysBefore[INPUT_KEY_COUNT];
 extern bool inputKeysNow[INPUT_KEY_COUNT];
-
-extern float deltaTime;
-
-#define SCREEN_WIDTH 120
-#define SCREEN_HEIGHT 30
-extern CHAR_INFO buffer[SCREEN_HEIGHT][SCREEN_WIDTH];

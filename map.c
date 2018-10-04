@@ -1,82 +1,122 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <ctype.h>
+#include <stdbool.h>
+#include <stdlib.h>
+#include <stddef.h>
+
 #include "map.h"
 #include "error.h"
 #include "stretchy_buffer.h"
-#include "globals.h"
-#include "ascii_rectangle.h"
-#include <stdio.h>
+#include "keyboard.h"
+#include "graphics.h"
 
 Map *create_map(char *filePath)
 {
 	Map *map = malloc(sizeof (*map));
-	map->playerXPos = -1;
-	map->playerYPos = -1;
 	FILE *file = fopen(filePath, "rb");
     if (!file)
     {
         error("could not open %s.", filePath);
     }
-	map->width = 0;
-	while (getc(file) != '\n')
+
+    fseek(file, 0, SEEK_END);
+    long fileSize = ftell(file);
+    if (fileSize == -1L)
+    {
+        error("could not get size of %s.", filePath);
+    }
+    fileSize++;  // For '\0'
+    rewind(file);
+
+    char *fileString = malloc(sizeof (*fileString) * fileSize);
+    size_t result = fread(fileString, sizeof (char), fileSize - 1, file);
+    if (result != (unsigned long)fileSize - 1)
+    {
+        error("could not read %s.", filePath);
+    }
+    fileString[fileSize - 1] = '\0';
+
+	fclose(file);
+	
+	int currentChar = 0;
+	
+	if (isdigit(fileString[currentChar]))
 	{
-		map->width++;
+        char *begin = fileString + currentChar;
+        char *end = begin;
+        do {
+            currentChar++;
+            end++;
+        } while (isdigit(fileString[currentChar]));
+        map->width = (int)strtol(begin, &end, 10);
 	}
-	map->boxesXPoss = NULL;
-	map->boxesYPoss = NULL;
+	currentChar++;
 	int cursorXPos = 0;
 	int cursorYPos = 0;
-	rewind(file);
+	map->playerXPos = -1;
+	map->playerYPos = -1;
 	map->tiles = NULL;
-	char c = getc(file);
-	while (c != EOF)
+	map->boxesXPoss = NULL;
+	map->boxesYPoss = NULL;
+	while (fileString[currentChar] != '\0')
 	{
-		if (c == ' ')
+		if (cursorXPos == map->width + 1)
+		{
+			error("map is wider than specified width at line %d of %s.", cursorYPos + 1, filePath);
+		}
+		if (fileString[currentChar] == ' ')
 		{
 			buf_add(map->tiles, TILE_VOID);
-		} else if (c == 'W') {
+		} else if (fileString[currentChar] == 'W') {
 			buf_add(map->tiles, TILE_WALL);
-		} else if (c == 'S') {
+		} else if (fileString[currentChar] == 'S') {
 			buf_add(map->tiles, TILE_SENSOR);
-		} else if (c == 'P') {
+		} else if (fileString[currentChar] == 'P') {
 			if (map->playerXPos != -1)
 			{
-				error("cannot have 2 players on the same map.");
+				error("cannot have 2 players on the same map in %s.", filePath);
 			}
 			buf_add(map->tiles, TILE_VOID);
 			map->playerXPos = cursorXPos;
 			map->playerYPos = cursorYPos;
-		} else if (c == 'B') {
+		} else if (fileString[currentChar] == 'B') {
 			buf_add(map->tiles, TILE_VOID);
 			buf_add(map->boxesXPoss, cursorXPos);
 			buf_add(map->boxesYPoss, cursorYPos);
-		} else if (c == 'X') {
+		} else if (fileString[currentChar] == 'X') {
 			if (map->playerXPos != -1)
 			{
-				error("cannot have 2 players on the same map.");
+				error("cannot have 2 players on the same map in %s.", filePath);
 			}
 			buf_add(map->tiles, TILE_SENSOR);
 			map->playerXPos = cursorXPos;
 			map->playerYPos = cursorYPos;
-		} else if (c == 'V') {
+		} else if (fileString[currentChar] == 'V') {
 			buf_add(map->tiles, TILE_SENSOR);
 			buf_add(map->boxesXPoss, cursorXPos);
 			buf_add(map->boxesYPoss, cursorYPos);
-		} else if (c == '\n') {
+		} else if (fileString[currentChar] == '\n') {
+			if (cursorXPos < map->width)
+			{
+				error("map must be filled at line %d of %s", cursorYPos + 1, filePath);
+			}
 			cursorXPos = -1;
 			cursorYPos++;
 		}
 		cursorXPos++;
-		c = getc(file);
+		currentChar++;
 	}
 	map->height = cursorYPos;
 	if (map->playerXPos == -1)
 	{
 		error("no player specified.");
 	}
-	fclose(file);
+	free(fileString);
 	return map;
 }
 
-void update_map(Map *map)
+bool update_map(Map *map)
 {
 	if (is_input_key_pressed(INPUT_KEY_Z))
 	{
@@ -252,53 +292,61 @@ void update_map(Map *map)
 			}
 		}
 	}
+	for (unsigned int i = 0; i < buf_len(map->boxesXPoss); i++)
+	{
+		if (map->tiles[map->boxesXPoss[i] + map->boxesYPoss[i] * map->width] != TILE_SENSOR)
+		{
+			return false;
+		}
+	}
+	return true;
 }
 
 void draw_map(Map *map)
 {
-	AsciiRectangle *ar = create_ascii_rectangle();
-	ar->width = 2;
-	ar->height = 1;
+	TileType tile;
+	int xPos;
+	int yPos;
+	Color color;
 	for (int i = 0; i < map->height; i++)
 	{
 		for (int j = 0; j < map->width; j++)
 		{
-			TileType tileType = map->tiles[i * map->width + j];
-			ar->xPos = j * 2;
-			ar->yPos = i * 1;
-			if (tileType == TILE_VOID)
+			tile = map->tiles[i * map->width + j];
+			xPos = j;
+			yPos = i;
+			if (tile == TILE_VOID)
 			{
-				ar->color = COLOR_WHITE;
-			} else if (tileType == TILE_WALL) {
-				ar->color = COLOR_BLACK;
-			} else if (tileType == TILE_SENSOR) {
-				ar->color = COLOR_YELLOW;
+				color = COLOR_WHITE;
+			} else if (tile == TILE_WALL) {
+				color = COLOR_BLACK;
+			} else if (tile == TILE_SENSOR) {
+				color = COLOR_YELLOW;
 			}
-			draw_ascii_rectangle(ar);
+			draw_square(xPos, yPos, color);
 		}
 	}
 	if (map->tiles[map->playerXPos + map->playerYPos * map->width] == TILE_SENSOR)
 	{
-		ar->color = COLOR_MAGENTA;
+		color = COLOR_CYAN;
 	} else {
-		ar->color = COLOR_BLUE;
+		color = COLOR_BLUE;
 	}
-	ar->xPos = map->playerXPos * 2;
-	ar->yPos = map->playerYPos * 1;
-	draw_ascii_rectangle(ar);
+	xPos = map->playerXPos;
+	yPos = map->playerYPos;
+	draw_square(xPos, yPos, color);
 	for (unsigned int i = 0; i < buf_len(map->boxesXPoss); i++)
 	{
 		if (map->tiles[map->boxesXPoss[i] + map->boxesYPoss[i] * map->width] == TILE_SENSOR)
 		{
-			ar->color = COLOR_GREEN;
+			color = COLOR_GREEN;
 		} else {
-			ar->color = COLOR_RED;
+			color = COLOR_RED;
 		}
-		ar->xPos = map->boxesXPoss[i] * 2;
-		ar->yPos = map->boxesYPoss[i] * 1;
-		draw_ascii_rectangle(ar);
+		xPos = map->boxesXPoss[i];
+		yPos = map->boxesYPoss[i];
+		draw_square(xPos, yPos, color);
 	}
-	free(ar);
 }
 
 void free_map(Map *map)

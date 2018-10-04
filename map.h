@@ -17,6 +17,6 @@ typedef struct Map
 } Map;
 
 Map *create_map(char *filePath);
-void update_map(Map *map);
+bool update_map(Map *map);
 void draw_map(Map *map);
 void free_map(Map *map);

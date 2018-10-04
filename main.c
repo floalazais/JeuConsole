@@ -1,55 +1,24 @@
 #include <stdio.h>
-#include <conio.h>
+#include <stdbool.h>
+#include <stdlib.h>
+#include <stddef.h>
+
 #include "error.h"
 #include "map.h"
-#include "globals.h"
-#include "ascii_rectangle.h"
+#include "buffer.h"
+#include "keyboard.h"
+#include "graphics.h"
 
 static LARGE_INTEGER globalPerformanceFrequency;
 static LARGE_INTEGER currentClock;
 static LARGE_INTEGER newClock;
-float deltaTime = 0.0f;
+static float deltaTime = 0.0f;
 
 static void update_delta_time()
 {
 	QueryPerformanceCounter(&newClock);
 	deltaTime = (float)(newClock.QuadPart - currentClock.QuadPart) / (float)globalPerformanceFrequency.QuadPart;
 	currentClock = newClock;
-}
-
-bool inputKeysBefore[INPUT_KEY_COUNT];
-bool inputKeysNow[INPUT_KEY_COUNT];
-
-static void is_input_key_supported(InputKey inputKey)
-{
-	if (inputKey < 0 || inputKey > INPUT_KEY_COUNT)
-	{
-		error("testing unsupported input key : %d.", inputKey);
-	}
-}
-
-bool is_input_key_up(InputKey inputKey)
-{
-	is_input_key_supported(inputKey);
-	return !inputKeysNow[inputKey];
-}
-
-bool is_input_key_down(InputKey inputKey)
-{
-	is_input_key_supported(inputKey);
-	return inputKeysNow[inputKey];
-}
-
-bool is_input_key_released(InputKey inputKey)
-{
-	is_input_key_supported(inputKey);
-	return inputKeysBefore[inputKey] && !inputKeysNow[inputKey];
-}
-
-bool is_input_key_pressed(InputKey inputKey)
-{
-	is_input_key_supported(inputKey);
-	return !inputKeysBefore[inputKey] && inputKeysNow[inputKey];
 }
 
 void update_input_keys()
@@ -91,17 +60,11 @@ int main()
     GetConsoleMode(hInput, &prevMode);
     SetConsoleMode(hInput, prevMode & ~ENABLE_QUICK_EDIT_MODE & ~ENABLE_MOUSE_INPUT & ~ENABLE_PROCESSED_INPUT);
 	
-	AsciiRectangle *ar = create_ascii_rectangle();
-	ar->xPos = 8;
-	ar->yPos = 10;
-	ar->width = 5;
-	ar->height = 4;
-	ar->color = COLOR_WHITE;
-	
 	CONSOLE_SCREEN_BUFFER_INFO CSBInfo;
 	
 	int nbFrame = 0;
 	bool pressed;
+	bool won = false;
 	
 	Map *map = create_map("map.map");
 	
@@ -133,6 +96,7 @@ int main()
 		
 		if (is_input_key_pressed(INPUT_KEY_R))
 		{
+			won = false;
 			free_map(map);
 			map = create_map("map.map");
 		}
@@ -149,13 +113,30 @@ int main()
 				}
 			}
 			
-			update_map(map);
+			if (!won)
+			{
+				won = update_map(map);
+			} else {
+				draw_text("YOU WON !", map->width + 1, map->height / 2, COLOR_GREEN);
+			}
 			draw_map(map);
+			
+			draw_square(1, map->height + 2, COLOR_CYAN);
+			draw_square(3, map->height + 2, COLOR_BLUE);
+			draw_text("PLAYER ON / NOT ON SENSOR", 5, map->height + 2, COLOR_WHITE);
+			
+			draw_square(1, map->height + 4, COLOR_GREEN);
+			draw_square(3, map->height + 4, COLOR_RED);
+			draw_text("BOX ON / NOT ON SENSOR", 5, map->height + 4, COLOR_WHITE);
+			
+			draw_square(1, map->height + 6, COLOR_YELLOW);
+			draw_text("SENSOR", 3, map->height + 6, COLOR_WHITE);
 			
 			WriteConsoleOutput(hOutput, (CHAR_INFO *)buffer, dwBufferSize, dwBufferCoord, &rcRegion);
 		}
 		nbFrame++;
     }
+	
 	WriteConsoleOutput(hOutput, (CHAR_INFO *)oldBuffer, dwBufferSize, dwBufferCoord, &rcRegion);
     
     cursorInfo.bVisible = true;
