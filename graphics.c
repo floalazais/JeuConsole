@@ -1,3 +1,5 @@
+#include <Windows.h>
+
 #include "buffer.h"
 #include "error.h"
 #include "graphics.h"

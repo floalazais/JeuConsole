@@ -2,6 +2,7 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <stddef.h>
+#include <Windows.h>
 
 #include "error.h"
 #include "map.h"
@@ -132,7 +133,7 @@ int main()
 			map = create_map("map.map");
 		}
 		
-		if (pressed || nbFrame == 0)
+		if ((pressed || nbFrame == 0) && !won)
 		{
 			pressed = false;
 			for (unsigned int i = 0; i < SCREEN_HEIGHT; i++)
