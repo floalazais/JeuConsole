@@ -21,42 +21,73 @@ static void update_delta_time()
 	currentClock = newClock;
 }
 
-void update_input_keys()
+static void update_input_keys()
 {
 	memcpy(inputKeysBefore, inputKeysNow, sizeof (inputKeysBefore));
 }
 
-bool compare_rectangle(SMALL_RECT *a, SMALL_RECT *b)
+static bool compare_rectangle(SMALL_RECT *a, SMALL_RECT *b)
 {
 	return a->Top == b->Top && a->Left == b->Left && a->Right == b->Right && a->Bottom == b->Bottom;
+}
+
+static HWND consoleWindow;
+static LONG oldWindowStyle;
+
+static HANDLE hOutput;
+static CONSOLE_CURSOR_INFO cursorInfo;
+
+static HANDLE hInput;
+static DWORD prevMode;
+
+static CHAR_INFO oldBuffer[SCREEN_HEIGHT][SCREEN_WIDTH];
+static COORD dwBufferSize = {SCREEN_WIDTH, SCREEN_HEIGHT};
+static COORD dwBufferCoord = {0, 0};
+static SMALL_RECT rcRegion = {0, 0, SCREEN_WIDTH - 1, SCREEN_HEIGHT - 1};
+
+void restore_console()
+{
+	WriteConsoleOutput(hOutput, (CHAR_INFO *)oldBuffer, dwBufferSize, dwBufferCoord, &rcRegion);
+    
+    cursorInfo.bVisible = true;
+    SetConsoleCursorInfo(hOutput, &cursorInfo);
+    
+    SetConsoleMode(hInput, prevMode);
+	
+	SetWindowLong(consoleWindow, GWL_STYLE, oldWindowStyle);
+}
+
+__attribute__((noreturn)) void error(char *format, ...)
+{
+	restore_console();
+	char buffer[1024] = "ERROR : ";
+	va_list arguments;
+	va_start(arguments, format);
+    vsprintf(buffer + 8, format, arguments);
+	va_end(arguments);
+	strcat(buffer, "\n");
+	puts(buffer);
+	exit(EXIT_FAILURE);
 }
 
 CHAR_INFO buffer[SCREEN_HEIGHT][SCREEN_WIDTH];
 
 int main()
 {   
-	HWND consoleWindow = GetConsoleWindow();
-	LONG oldWindowStyle = GetWindowLong(consoleWindow, GWL_STYLE);
+	consoleWindow = GetConsoleWindow();
+	oldWindowStyle = GetWindowLong(consoleWindow, GWL_STYLE);
 	SetWindowLong(consoleWindow, GWL_STYLE, oldWindowStyle & ~WS_MAXIMIZEBOX & ~WS_SIZEBOX);
 	
-
-    COORD dwBufferSize = {SCREEN_WIDTH, SCREEN_HEIGHT};
-    COORD dwBufferCoord = {0, 0};
-    SMALL_RECT rcRegion = {0, 0, SCREEN_WIDTH - 1, SCREEN_HEIGHT - 1};
+	hOutput = GetStdHandle(STD_OUTPUT_HANDLE);
 	
-	HANDLE hOutput = GetStdHandle(STD_OUTPUT_HANDLE);
-	
-	CHAR_INFO oldBuffer[SCREEN_HEIGHT][SCREEN_WIDTH];
 	ReadConsoleOutput(hOutput, (CHAR_INFO *)oldBuffer, dwBufferSize, dwBufferCoord, &rcRegion);
 	
-	CONSOLE_CURSOR_INFO cursorInfo;
     GetConsoleCursorInfo(hOutput, &cursorInfo);
     cursorInfo.bVisible = false;
     SetConsoleCursorInfo(hOutput, &cursorInfo);
     
-    HANDLE hInput = GetStdHandle(STD_INPUT_HANDLE);
+    hInput = GetStdHandle(STD_INPUT_HANDLE);
     
-    DWORD prevMode;
     GetConsoleMode(hInput, &prevMode);
     SetConsoleMode(hInput, prevMode & ~ENABLE_QUICK_EDIT_MODE & ~ENABLE_MOUSE_INPUT & ~ENABLE_PROCESSED_INPUT);
 	
@@ -136,15 +167,7 @@ int main()
 		}
 		nbFrame++;
     }
-	
-	WriteConsoleOutput(hOutput, (CHAR_INFO *)oldBuffer, dwBufferSize, dwBufferCoord, &rcRegion);
-    
-    cursorInfo.bVisible = true;
-    SetConsoleCursorInfo(hOutput, &cursorInfo);
-    
-    SetConsoleMode(hInput, prevMode);
-	
-	SetWindowLong(consoleWindow, GWL_STYLE, oldWindowStyle);
+	restore_console();
     
     return 0;
 }

@@ -51,6 +51,10 @@ Map *create_map(char *filePath)
         } while (isdigit(fileString[currentChar]));
         map->width = (int)strtol(begin, &end, 10);
 	}
+	if (fileString[currentChar] == '\r')
+	{
+		currentChar++;
+	}
 	currentChar++;
 	int cursorXPos = 0;
 	int cursorYPos = 0;
@@ -96,6 +100,16 @@ Map *create_map(char *filePath)
 			buf_add(map->tiles, TILE_SENSOR);
 			buf_add(map->boxesXPoss, cursorXPos);
 			buf_add(map->boxesYPoss, cursorYPos);
+		} else if (fileString[currentChar] == '\r') {
+			currentChar++;
+			if (fileString[currentChar] == '\n') {
+				if (cursorXPos < map->width)
+				{
+					error("map must be filled at line %d of %s", cursorYPos + 1, filePath);
+				}
+				cursorXPos = -1;
+				cursorYPos++;
+			}
 		} else if (fileString[currentChar] == '\n') {
 			if (cursorXPos < map->width)
 			{
@@ -305,47 +319,35 @@ bool update_map(Map *map)
 void draw_map(Map *map)
 {
 	TileType tile;
-	int xPos;
-	int yPos;
-	Color color;
 	for (int i = 0; i < map->height; i++)
 	{
 		for (int j = 0; j < map->width; j++)
 		{
 			tile = map->tiles[i * map->width + j];
-			xPos = j;
-			yPos = i;
 			if (tile == TILE_VOID)
 			{
-				color = COLOR_WHITE;
+				draw_square(j, i, COLOR_WHITE);
 			} else if (tile == TILE_WALL) {
-				color = COLOR_BLACK;
+				draw_square(j, i, COLOR_BLACK);
 			} else if (tile == TILE_SENSOR) {
-				color = COLOR_YELLOW;
+				draw_square(j, i, COLOR_YELLOW);
 			}
-			draw_square(xPos, yPos, color);
 		}
 	}
 	if (map->tiles[map->playerXPos + map->playerYPos * map->width] == TILE_SENSOR)
 	{
-		color = COLOR_CYAN;
+		draw_square(map->playerXPos, map->playerYPos, COLOR_CYAN);
 	} else {
-		color = COLOR_BLUE;
+		draw_square(map->playerXPos, map->playerYPos, COLOR_BLUE);
 	}
-	xPos = map->playerXPos;
-	yPos = map->playerYPos;
-	draw_square(xPos, yPos, color);
 	for (unsigned int i = 0; i < buf_len(map->boxesXPoss); i++)
 	{
 		if (map->tiles[map->boxesXPoss[i] + map->boxesYPoss[i] * map->width] == TILE_SENSOR)
 		{
-			color = COLOR_GREEN;
+			draw_square(map->boxesXPoss[i], map->boxesYPoss[i], COLOR_GREEN);
 		} else {
-			color = COLOR_RED;
+			draw_square(map->boxesXPoss[i], map->boxesYPoss[i], COLOR_RED);
 		}
-		xPos = map->boxesXPoss[i];
-		yPos = map->boxesYPoss[i];
-		draw_square(xPos, yPos, color);
 	}
 }
 
